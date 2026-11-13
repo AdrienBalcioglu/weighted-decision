@@ -2,6 +2,8 @@
 
 Compare options against weighted criteria and see which one comes out ahead.
 
+**[Try it live](https://adrienbalcioglu.github.io/weighted-decision/)**
+
 ## Features
 
 - Any number of options and criteria

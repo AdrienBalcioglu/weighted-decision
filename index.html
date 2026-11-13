@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weighted Decision</title>
+<style>:root{--bg:#f7f7f5;--panel:#fff;--ink:#1c1c1a;--muted:#6b6b66;--line:#e3e3de;--accent:#3d5afe;--accent-ink:#fff;--good:#1a7f4b;--bad:#b3261e;--warn:#9a6700;--soft:#eef0ff;--radius:10px;--mono:ui-monospace,SFMono-Regular,Menlo,monospace}
+@media (prefers-color-scheme:dark){:root{--bg:#141413;--panel:#1d1d1b;--ink:#ececE6;--muted:#9a9a93;--line:#30302c;--accent:#8c9eff;--accent-ink:#11122b;--good:#5fd39a;--bad:#ff8a80;--warn:#e3b341;--soft:#23264a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1080px;margin:0 auto;padding:28px 16px 64px}
+header.top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+h1{font-size:24px;margin:0;letter-spacing:-.01em}
+h2{font-size:15px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+p.lead{margin:4px 0 0;color:var(--muted);max-width:62ch}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:16px}
+.grid{display:grid;gap:16px}
+@media(min-width:820px){.cols-2{grid-template-columns:1fr 1fr}.cols-3{grid-template-columns:repeat(3,1fr)}.side{grid-template-columns:340px 1fr}}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+input,select,textarea{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+textarea{min-height:120px;resize:vertical}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.field{margin-bottom:12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button{font:inherit;font-weight:600;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:8px 14px}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button.ghost{border-color:transparent;color:var(--muted);padding:4px 8px}
+button:disabled{opacity:.5;cursor:not-allowed}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+td input{padding:5px 7px}
+.scroll{overflow-x:auto}
+.stat{font-size:28px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.stat small{display:block;font-size:12px;font-weight:500;color:var(--muted);letter-spacing:0}
+.muted{color:var(--muted)}.good{color:var(--good)}.bad{color:var(--bad)}.warn{color:var(--warn)}
+.tag{display:inline-block;font-size:12px;padding:2px 8px;border-radius:99px;background:var(--soft);color:var(--accent)}
+.out{white-space:pre-wrap;word-wrap:break-word;font-size:14.5px;min-height:120px}
+.out.mono,code{font-family:var(--mono);font-size:13px}
+.note{font-size:13px;color:var(--muted)}
+footer{margin-top:28px;font-size:13px;color:var(--muted)}
+footer a{color:inherit}
+
+td input[type=number]{width:64px}
+th input{font-weight:600;min-width:120px}
+tfoot td{font-weight:700;border-bottom:0}
+.win{color:var(--good)}
+.bar{height:8px;border-radius:4px;background:var(--accent);margin-top:4px}
+.win .bar{background:var(--good)}
+</style>
+</head>
+<body>
+<main>
+  <header class="top">
+    <div>
+      <h1 id="question" contenteditable="true" spellcheck="false">Which option should we pick?</h1>
+      <p class="lead">List your options and what matters, weight each criterion, score each option. The total is a starting point for the discussion, not the decision.</p>
+    </div>
+    <div class="row">
+      <button id="addOption" class="primary">Add option</button>
+      <button id="addCriterion">Add criterion</button>
+      <button id="md">Copy as Markdown</button>
+      <button id="reset" class="ghost">Reset</button>
+    </div>
+  </header>
+  <section class="panel scroll"><table id="grid"></table></section>
+  <section class="panel">
+    <h2>Reading the result</h2>
+    <p id="verdict" class="note" style="margin:0"></p>
+  </section>
+  <p id="toast" class="note" role="status"></p>
+  <footer>MIT license · © 2026 Adrien Balcioglu · Runs entirely in your browser: no account, no API key, no server.</footer>
+</main>
+<script>
+const KEY = 'weighted-decision-v1';
+const SAMPLE = {
+  question: 'Which analytics tool should we pick?',
+  options: ['Tool A', 'Tool B', 'Tool C'],
+  criteria: [
+    { name: 'Price', weight: 3, scores: [4, 2, 5] },
+    { name: 'Ease of setup', weight: 4, scores: [3, 5, 2] },
+    { name: 'Fits our stack', weight: 5, scores: [4, 4, 2] },
+    { name: 'Support quality', weight: 2, scores: [3, 4, 3] },
+  ],
+};
+const $ = (id) => document.getElementById(id);
+let state = load();
+function load() { try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.options) && Array.isArray(s.criteria)) return s; } catch {} return structuredClone(SAMPLE); }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} }
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, Number.isFinite(+v) ? +v : lo));
+
+function totals() {
+  const max = state.criteria.reduce((s, c) => s + c.weight * 5, 0) || 1;
+  return state.options.map((_, i) => { const raw = state.criteria.reduce((s, c) => s + c.weight * (c.scores[i] ?? 0), 0); return { raw, pct: (raw / max) * 100 }; });
+}
+function cell(tag, child, cls) { const el = document.createElement(tag); if (cls) el.className = cls; if (child !== undefined) el.append(child); return el; }
+function input(value, data, attrs = {}) { const el = document.createElement('input'); el.value = value; Object.assign(el.dataset, data); for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v); return el; }
+function button(label, data, aria) { const b = document.createElement('button'); b.className = 'ghost'; b.textContent = label; Object.assign(b.dataset, data); b.setAttribute('aria-label', aria); return b; }
+
+function render() {
+  $('question').textContent = state.question;
+  const t = totals(), best = Math.max(...t.map((x) => x.raw), 0);
+  const grid = $('grid'); grid.innerHTML = '';
+  const head = document.createElement('tr');
+  head.append(cell('th', 'Criterion'), cell('th', 'Weight (1-5)'));
+  state.options.forEach((name, i) => { const th = cell('th'); th.append(input(name, { option: i }, { 'aria-label': 'Option name' }), button('✕', { delOption: i }, 'Delete option')); head.append(th); });
+  head.append(cell('th', ''));
+  grid.append(cell('thead', head));
+  const body = document.createElement('tbody');
+  state.criteria.forEach((c, r) => {
+    const tr = document.createElement('tr');
+    tr.append(cell('td', input(c.name, { crit: r }, { 'aria-label': 'Criterion' })), cell('td', input(c.weight, { weight: r }, { type: 'number', min: 1, max: 5, 'aria-label': 'Weight' })));
+    state.options.forEach((_, i) => tr.append(cell('td', input(c.scores[i] ?? 0, { score: r, col: i }, { type: 'number', min: 0, max: 5, 'aria-label': `Score of ${state.options[i]} on ${c.name}` }))));
+    tr.append(cell('td', button('✕', { delCrit: r }, 'Delete criterion')));
+    body.append(tr);
+  });
+  grid.append(body);
+  const foot = document.createElement('tr');
+  foot.append(cell('td', 'Weighted score'), cell('td', ''));
+  t.forEach((x) => { const td = cell('td', `${x.pct.toFixed(0)}%`, x.raw === best && best > 0 ? 'win' : ''); const bar = document.createElement('div'); bar.className = 'bar'; bar.style.width = x.pct + '%'; td.append(bar); foot.append(td); });
+  foot.append(cell('td', ''));
+  grid.append(cell('tfoot', foot));
+
+  const ranked = t.map((x, i) => ({ ...x, name: state.options[i] })).sort((a, b) => b.raw - a.raw);
+  const v = $('verdict');
+  if (ranked.length < 2 || !state.criteria.length) v.textContent = 'Add at least two options and one criterion.';
+  else {
+    const gap = ranked[0].pct - ranked[1].pct;
+    v.textContent = gap < 5
+      ? `${ranked[0].name} and ${ranked[1].name} are within ${gap.toFixed(0)} points of each other: the scores do not separate them. Look at the criterion you weighted highest, or add the one you are hesitating about.`
+      : `${ranked[0].name} leads with ${ranked[0].pct.toFixed(0)}%, ${gap.toFixed(0)} points ahead of ${ranked[1].name}. If that surprises you, a criterion or a weight is probably missing.`;
+  }
+}
+
+$('grid').addEventListener('change', (e) => {
+  const d = e.target.dataset, v = e.target.value;
+  if (d.option !== undefined) state.options[+d.option] = v.trim() || 'Option';
+  else if (d.crit !== undefined) state.criteria[+d.crit].name = v.trim() || 'Criterion';
+  else if (d.weight !== undefined) state.criteria[+d.weight].weight = clamp(v, 1, 5);
+  else if (d.score !== undefined) state.criteria[+d.score].scores[+d.col] = clamp(v, 0, 5);
+  else return;
+  save(); render();
+});
+$('grid').addEventListener('click', (e) => {
+  const d = e.target.dataset;
+  if (d.delOption !== undefined) { const i = +d.delOption; state.options.splice(i, 1); state.criteria.forEach((c) => c.scores.splice(i, 1)); }
+  else if (d.delCrit !== undefined) state.criteria.splice(+d.delCrit, 1);
+  else return;
+  save(); render();
+});
+$('addOption').addEventListener('click', () => { state.options.push(`Option ${state.options.length + 1}`); state.criteria.forEach((c) => c.scores.push(3)); save(); render(); });
+$('addCriterion').addEventListener('click', () => { state.criteria.push({ name: 'New criterion', weight: 3, scores: state.options.map(() => 3) }); save(); render(); });
+$('question').addEventListener('blur', () => { state.question = $('question').textContent.trim() || 'Which option should we pick?'; save(); });
+$('question').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } });
+$('reset').addEventListener('click', () => { if (confirm('Replace your grid with the sample?')) { state = structuredClone(SAMPLE); save(); render(); } });
+$('md').addEventListener('click', async () => {
+  const t = totals();
+  const md = `# ${state.question}\n\n| Criterion | Weight | ${state.options.join(' | ')} |\n| --- | --- | ${state.options.map(() => '---').join(' | ')} |\n` +
+    state.criteria.map((c) => `| ${c.name} | ${c.weight} | ${state.options.map((_, i) => c.scores[i] ?? 0).join(' | ')} |`).join('\n') +
+    `\n| **Weighted score** | | ${t.map((x) => `**${x.pct.toFixed(0)}%**`).join(' | ')} |\n\n${$('verdict').textContent}\n`;
+  try { await navigator.clipboard.writeText(md); $('toast').textContent = 'Copied as Markdown.'; } catch { $('toast').textContent = 'The clipboard is not available here.'; }
+  setTimeout(() => { $('toast').textContent = ''; }, 2500);
+});
+render();
+</script>
+</body>
+</html>

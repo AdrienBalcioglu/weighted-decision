@@ -2,7 +2,7 @@
 
 Compare options against weighted criteria and see which one comes out ahead.
 
-**[Try it live](https://adrienbalcioglu.github.io/weighted-decision/)**
+**[Website](https://adrienbalcioglu.github.io/weighted-decision/about.html)** · **[Open the app](https://adrienbalcioglu.github.io/weighted-decision/)**
 
 ## Features
 

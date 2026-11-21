@@ -2,7 +2,7 @@
 
 Compare options against weighted criteria and see which one comes out ahead.
 
-**[Website](https://adrienbalcioglu.github.io/weighted-decision/about.html)** · **[Open the app](https://adrienbalcioglu.github.io/weighted-decision/)**
+**[Website](https://eidoslab.fr/weighted-decision)** · **[Open the app](https://adrienbalcioglu.github.io/weighted-decision/)**
 
 ## Features
 
